@@ -22,7 +22,8 @@ func NewVaccineHandler(db *repository.DB) *VaccineHandler { return &VaccineHandl
 
 // List godoc — GET /api/vaccines
 func (h *VaccineHandler) List(c *gin.Context) {
-	childID := c.GetString(middleware.KeyChildID)
+	childID := resolveChildID(c, h.db, middleware.KeyChildID, middleware.KeyUserID)
+
 	col := h.db.Collection(repository.ColVaccines)
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
@@ -91,7 +92,12 @@ func (h *VaccineHandler) MarkAdministered(c *gin.Context) {
 // BulkCreate godoc — POST /api/vaccines/bulk
 // Used to seed the PNI schedule for a new child.
 func (h *VaccineHandler) BulkCreate(c *gin.Context) {
-	childID := c.GetString(middleware.KeyChildID)
+	childID := resolveChildID(c, h.db, middleware.KeyChildID, middleware.KeyUserID)
+	if childID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "perfil del bebé no encontrado, crea el perfil primero"})
+		return
+	}
+
 	var vaccines []models.Vaccine
 	if err := c.ShouldBindJSON(&vaccines); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})

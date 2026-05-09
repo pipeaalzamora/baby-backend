@@ -24,7 +24,7 @@ func NewMedicationHandler(db *repository.DB) *MedicationHandler {
 
 // List godoc — GET /api/medications
 func (h *MedicationHandler) List(c *gin.Context) {
-	childID := c.GetString(middleware.KeyChildID)
+	childID := resolveChildID(c, h.db, middleware.KeyChildID, middleware.KeyUserID)
 	col := h.db.Collection(repository.ColMedications)
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
@@ -50,7 +50,7 @@ func (h *MedicationHandler) List(c *gin.Context) {
 
 // Create godoc — POST /api/medications
 func (h *MedicationHandler) Create(c *gin.Context) {
-	childID := c.GetString(middleware.KeyChildID)
+	childID := resolveChildID(c, h.db, middleware.KeyChildID, middleware.KeyUserID)
 	var body models.Medication
 	if err := c.ShouldBindJSON(&body); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})

@@ -49,15 +49,34 @@ func (h *ChildHandler) Upsert(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	body.UserID = userID
-	body.UpdatedAt = time.Now()
 
 	col := h.db.Collection(repository.ColChildren)
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
+	// $set solo contiene los campos editables — nunca createdAt
+	// $setOnInsert solo se aplica en INSERT, evitando el conflicto de MongoDB
+	setFields := bson.M{
+		"userId":        userID,
+		"name":          body.Name,
+		"birthDate":     body.BirthDate,
+		"gender":        body.Gender,
+		"birthWeightKg": body.BirthWeightKg,
+		"birthHeightCm": body.BirthHeightCm,
+		"updatedAt":     time.Now(),
+	}
+	if body.BloodType != "" {
+		setFields["bloodType"] = body.BloodType
+	}
+	if body.PhotoURL != "" {
+		setFields["photoUrl"] = body.PhotoURL
+	}
+
 	filter := bson.M{"userId": userID}
-	update := bson.M{"$set": body, "$setOnInsert": bson.M{"createdAt": time.Now()}}
+	update := bson.M{
+		"$set":         setFields,
+		"$setOnInsert": bson.M{"createdAt": time.Now()},
+	}
 	opts := options.UpdateOne().SetUpsert(true)
 
 	res, err := col.UpdateOne(ctx, filter, update, opts)
@@ -66,7 +85,7 @@ func (h *ChildHandler) Upsert(c *gin.Context) {
 		return
 	}
 
-	// Return the upserted/updated document
+	// Devolver el documento actualizado/insertado
 	var child models.Child
 	var findFilter bson.M
 	if res.UpsertedID != nil {

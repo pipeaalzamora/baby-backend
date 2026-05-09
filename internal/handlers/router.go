@@ -17,13 +17,14 @@ func NewRouter(cfg *config.Config, db *repository.DB) *gin.Engine {
 	r := gin.New()
 	r.Use(gin.Logger(), gin.Recovery())
 
-	// CORS — allow the Vite dev server and production frontend
+	// CORS — AllowAllOrigins para Flutter mobile + Angular web en desarrollo.
+	// En producción reemplazar con la URL real del servidor.
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{cfg.FrontendURL},
+		AllowAllOrigins:  true,
 		AllowMethods:     []string{"GET", "POST", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
-		AllowCredentials: true,
+		AllowCredentials: false, // debe ser false cuando AllowAllOrigins es true
 		MaxAge:           12 * time.Hour,
 	}))
 
@@ -37,10 +38,12 @@ func NewRouter(cfg *config.Config, db *repository.DB) *gin.Engine {
 
 	// ─── Auth routes (no JWT required) ────────────────────────────────────
 	authH := NewAuthHandler(db, cfg.JWTSecret, cfg.JWTExpiry)
+	googleH := NewGoogleAuthHandler(db, cfg.JWTSecret, cfg.JWTExpiry, cfg.GoogleClientID)
 	auth := r.Group("/api/auth")
 	{
 		auth.POST("/register", authH.Register)
 		auth.POST("/login", authH.Login)
+		auth.POST("/google", googleH.GoogleLogin)
 	}
 
 	// ─── Protected routes ─────────────────────────────────────────────────

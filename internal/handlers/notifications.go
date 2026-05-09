@@ -27,7 +27,7 @@ func NewNotificationHandler(db *repository.DB) *NotificationHandler {
 // Auto-generates vaccine notifications for upcoming vaccines within 30 days.
 func (h *NotificationHandler) List(c *gin.Context) {
 	userID := c.GetString(middleware.KeyUserID)
-	childID := c.GetString(middleware.KeyChildID)
+	childID := resolveChildID(c, h.db, middleware.KeyChildID, middleware.KeyUserID)
 
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
 	defer cancel()
