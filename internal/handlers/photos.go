@@ -119,3 +119,29 @@ func (h *PhotoHandler) Upload(c *gin.Context) {
 	photo.ID = res.InsertedID.(bson.ObjectID)
 	c.JSON(http.StatusCreated, photo)
 }
+
+// Delete godoc — DELETE /api/photos/:id
+func (h *PhotoHandler) Delete(c *gin.Context) {
+	childID := c.GetString(middleware.KeyChildID)
+	id, err := bson.ObjectIDFromHex(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "id inválido"})
+		return
+	}
+
+	col := h.db.Collection(repository.ColPhotos)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	// Verificar ownership: la foto debe pertenecer al childId del usuario
+	res, err := col.DeleteOne(ctx, bson.M{"_id": id, "childId": childID})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if res.DeletedCount == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "foto no encontrada"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}

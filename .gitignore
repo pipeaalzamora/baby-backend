@@ -1,0 +1,13 @@
+# Environment variables — NUNCA commitear
+.env
+
+# Binarios compilados
+tmp/
+*.exe
+
+# Uploads locales
+uploads/
+
+# IDE
+.idea/
+.vscode/

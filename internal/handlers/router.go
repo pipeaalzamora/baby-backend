@@ -17,14 +17,14 @@ func NewRouter(cfg *config.Config, db *repository.DB) *gin.Engine {
 	r := gin.New()
 	r.Use(gin.Logger(), gin.Recovery())
 
-	// CORS — AllowAllOrigins para Flutter mobile + Angular web en desarrollo.
-	// En producción reemplazar con la URL real del servidor.
+	// CORS — en desarrollo permite localhost:4200, en producción usa FRONTEND_URL.
+	allowedOrigins := []string{cfg.FrontendURL}
 	r.Use(cors.New(cors.Config{
-		AllowAllOrigins:  true,
+		AllowOrigins:     allowedOrigins,
 		AllowMethods:     []string{"GET", "POST", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
-		AllowCredentials: false, // debe ser false cuando AllowAllOrigins es true
+		AllowCredentials: false,
 		MaxAge:           12 * time.Hour,
 	}))
 
@@ -59,38 +59,44 @@ func NewRouter(cfg *config.Config, db *repository.DB) *gin.Engine {
 	vaccineH := NewVaccineHandler(db)
 	api.GET("/vaccines", vaccineH.List)
 	api.POST("/vaccines/bulk", vaccineH.BulkCreate)
-	api.POST("/vaccines/:id", vaccineH.MarkAdministered)
+	api.PATCH("/vaccines/:id", vaccineH.MarkAdministered) // PATCH es semánticamente correcto para actualización parcial
 
 	// Measurements
 	measureH := NewMeasurementHandler(db)
 	api.GET("/measurements", measureH.List)
 	api.POST("/measurements", measureH.Create)
+	api.DELETE("/measurements/:id", measureH.Delete)
 
 	// Checkups
 	checkupH := NewCheckupHandler(db)
 	api.GET("/checkups", checkupH.List)
 	api.POST("/checkups", checkupH.Create)
+	api.DELETE("/checkups/:id", checkupH.Delete)
 
 	// Milestones
 	milestoneH := NewMilestoneHandler(db)
 	api.GET("/milestones", milestoneH.List)
 	api.POST("/milestones", milestoneH.Create)
+	api.DELETE("/milestones/:id", milestoneH.Delete)
 
 	// Diary
 	diaryH := NewDiaryHandler(db)
 	api.GET("/diary", diaryH.List)
 	api.POST("/diary", diaryH.Create)
+	api.DELETE("/diary/:id", diaryH.Delete)
 
 	// Medications
 	medH := NewMedicationHandler(db)
 	api.GET("/medications", medH.List)
 	api.POST("/medications", medH.Create)
 	api.PATCH("/medications/:id", medH.Patch)
+	api.DELETE("/medications/:id", medH.Delete)
 
 	// Photos
 	photoH := NewPhotoHandler(db, cfg.UploadDir, cfg.BaseURL)
 	api.GET("/photos", photoH.List)
 	api.POST("/photos", photoH.Upload)
+	api.DELETE("/photos/:id", photoH.Delete)
 
 	// Recipes + food introductions
 	recipeH := NewRecipeHandler(db)

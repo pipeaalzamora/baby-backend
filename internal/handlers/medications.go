@@ -101,3 +101,27 @@ func (h *MedicationHandler) Patch(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, med)
 }
+
+// Delete godoc — DELETE /api/medications/:id
+func (h *MedicationHandler) Delete(c *gin.Context) {
+	childID := resolveChildID(c, h.db, middleware.KeyChildID, middleware.KeyUserID)
+	id, err := bson.ObjectIDFromHex(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "id inválido"})
+		return
+	}
+	col := h.db.Collection(repository.ColMedications)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	res, err := col.DeleteOne(ctx, bson.M{"_id": id, "childId": childID})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if res.DeletedCount == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "medicamento no encontrado"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}

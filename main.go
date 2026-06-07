@@ -27,6 +27,11 @@ func main() {
 	}
 	log.Printf("✅ MongoDB conectado: %s / %s", cfg.MongoURI, cfg.DBName)
 
+	// Ensure all indexes exist (idempotent)
+	idxCtx, idxCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	db.EnsureIndexes(idxCtx)
+	idxCancel()
+
 	// Build router
 	router := handlers.NewRouter(cfg, db)
 

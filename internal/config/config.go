@@ -2,6 +2,7 @@
 package config
 
 import (
+	"log"
 	"os"
 	"time"
 
@@ -27,10 +28,15 @@ func Load() *Config {
 	// Best-effort load of .env — ignore error if file doesn't exist
 	_ = godotenv.Load()
 
+	jwtSecret := getEnv("JWT_SECRET", "")
+	if jwtSecret == "" {
+		log.Fatal("❌ JWT_SECRET no está configurado. Agrega JWT_SECRET al archivo .env o variables de entorno.")
+	}
+
 	return &Config{
 		MongoURI:       getEnv("MONGO_URI", "mongodb://localhost:27017"),
 		DBName:         getEnv("DB_NAME", "babyapp"),
-		JWTSecret:      getEnv("JWT_SECRET", "babyapp-dev-secret-change-in-prod"),
+		JWTSecret:      jwtSecret,
 		JWTExpiry:      30 * 24 * time.Hour, // 30 days
 		Port:           getEnv("PORT", "3001"),
 		FrontendURL:    getEnv("FRONTEND_URL", "http://localhost:4200"),

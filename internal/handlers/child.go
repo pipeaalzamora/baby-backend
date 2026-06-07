@@ -71,6 +71,9 @@ func (h *ChildHandler) Upsert(c *gin.Context) {
 	if body.PhotoURL != "" {
 		setFields["photoUrl"] = body.PhotoURL
 	}
+	if body.ModelKey != "" {
+		setFields["modelKey"] = body.ModelKey
+	}
 
 	filter := bson.M{"userId": userID}
 	update := bson.M{

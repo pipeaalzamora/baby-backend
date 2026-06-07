@@ -11,17 +11,18 @@ import (
 
 // Child represents the baby's profile.
 type Child struct {
-	ID              bson.ObjectID `bson:"_id,omitempty"    json:"id"`
-	UserID          string        `bson:"userId"           json:"userId"`
-	Name            string        `bson:"name"             json:"name"`
-	BirthDate       string        `bson:"birthDate"        json:"birthDate"`
-	Gender          string        `bson:"gender"           json:"gender"` // "M" | "F"
+	ID              bson.ObjectID `bson:"_id,omitempty"       json:"id"`
+	UserID          string        `bson:"userId"              json:"userId"`
+	Name            string        `bson:"name"                json:"name"`
+	BirthDate       string        `bson:"birthDate"           json:"birthDate"`
+	Gender          string        `bson:"gender"              json:"gender"` // "M" | "F"
 	BloodType       string        `bson:"bloodType,omitempty" json:"bloodType,omitempty"`
 	PhotoURL        string        `bson:"photoUrl,omitempty"  json:"photoUrl,omitempty"`
-	BirthWeightKg   float64       `bson:"birthWeightKg"    json:"birthWeightKg"`
-	BirthHeightCm   float64       `bson:"birthHeightCm"    json:"birthHeightCm"`
-	CreatedAt       time.Time     `bson:"createdAt"        json:"createdAt"`
-	UpdatedAt       time.Time     `bson:"updatedAt"        json:"updatedAt"`
+	BirthWeightKg   float64       `bson:"birthWeightKg"       json:"birthWeightKg"`
+	BirthHeightCm   float64       `bson:"birthHeightCm"       json:"birthHeightCm"`
+	ModelKey        string        `bson:"modelKey,omitempty"  json:"modelKey,omitempty"` // clave del modelo 3D elegido
+	CreatedAt       time.Time     `bson:"createdAt"           json:"createdAt"`
+	UpdatedAt       time.Time     `bson:"updatedAt"           json:"updatedAt"`
 }
 
 // ─── User ─────────────────────────────────────────────────────────────────────

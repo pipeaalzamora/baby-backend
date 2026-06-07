@@ -70,6 +70,29 @@ func (h *MeasurementHandler) Create(c *gin.Context) {
 	c.JSON(http.StatusCreated, body)
 }
 
+func (h *MeasurementHandler) Delete(c *gin.Context) {
+	childID := resolveChildID(c, h.db, middleware.KeyChildID, middleware.KeyUserID)
+	id, err := bson.ObjectIDFromHex(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "id inválido"})
+		return
+	}
+	col := h.db.Collection(repository.ColMeasurements)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	res, err := col.DeleteOne(ctx, bson.M{"_id": id, "childId": childID})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if res.DeletedCount == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "medición no encontrada"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
 // ─── Checkups ─────────────────────────────────────────────────────────────────
 
 type CheckupHandler struct{ db *repository.DB }
@@ -125,6 +148,29 @@ func (h *CheckupHandler) Create(c *gin.Context) {
 	}
 	body.ID = res.InsertedID.(bson.ObjectID)
 	c.JSON(http.StatusCreated, body)
+}
+
+func (h *CheckupHandler) Delete(c *gin.Context) {
+	childID := resolveChildID(c, h.db, middleware.KeyChildID, middleware.KeyUserID)
+	id, err := bson.ObjectIDFromHex(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "id inválido"})
+		return
+	}
+	col := h.db.Collection(repository.ColCheckups)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	res, err := col.DeleteOne(ctx, bson.M{"_id": id, "childId": childID})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if res.DeletedCount == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "control no encontrado"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
 // ─── Milestones ───────────────────────────────────────────────────────────────
@@ -184,6 +230,29 @@ func (h *MilestoneHandler) Create(c *gin.Context) {
 	c.JSON(http.StatusCreated, body)
 }
 
+func (h *MilestoneHandler) Delete(c *gin.Context) {
+	childID := resolveChildID(c, h.db, middleware.KeyChildID, middleware.KeyUserID)
+	id, err := bson.ObjectIDFromHex(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "id inválido"})
+		return
+	}
+	col := h.db.Collection(repository.ColMilestones)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	res, err := col.DeleteOne(ctx, bson.M{"_id": id, "childId": childID})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if res.DeletedCount == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "hito no encontrado"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
 // ─── Diary ────────────────────────────────────────────────────────────────────
 
 type DiaryHandler struct{ db *repository.DB }
@@ -239,4 +308,27 @@ func (h *DiaryHandler) Create(c *gin.Context) {
 	}
 	body.ID = res.InsertedID.(bson.ObjectID)
 	c.JSON(http.StatusCreated, body)
+}
+
+func (h *DiaryHandler) Delete(c *gin.Context) {
+	childID := resolveChildID(c, h.db, middleware.KeyChildID, middleware.KeyUserID)
+	id, err := bson.ObjectIDFromHex(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "id inválido"})
+		return
+	}
+	col := h.db.Collection(repository.ColDiary)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	res, err := col.DeleteOne(ctx, bson.M{"_id": id, "childId": childID})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if res.DeletedCount == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "entrada no encontrada"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
