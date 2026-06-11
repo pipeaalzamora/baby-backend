@@ -51,6 +51,11 @@ func (h *MedicationHandler) List(c *gin.Context) {
 // Create godoc — POST /api/medications
 func (h *MedicationHandler) Create(c *gin.Context) {
 	childID := resolveChildID(c, h.db, middleware.KeyChildID, middleware.KeyUserID)
+	if childID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "perfil de bebé requerido"})
+		return
+	}
+
 	var body models.Medication
 	if err := c.ShouldBindJSON(&body); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -76,6 +81,7 @@ func (h *MedicationHandler) Create(c *gin.Context) {
 // Patch godoc — PATCH /api/medications/:id
 // Used to deactivate a medication (set active=false, endDate).
 func (h *MedicationHandler) Patch(c *gin.Context) {
+	childID := resolveChildID(c, h.db, middleware.KeyChildID, middleware.KeyUserID)
 	id, err := bson.ObjectIDFromHex(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "id inválido"})
@@ -94,7 +100,7 @@ func (h *MedicationHandler) Patch(c *gin.Context) {
 
 	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
 	var med models.Medication
-	if err := col.FindOneAndUpdate(ctx, bson.M{"_id": id},
+	if err := col.FindOneAndUpdate(ctx, bson.M{"_id": id, "childId": childID},
 		bson.M{"$set": body}, opts).Decode(&med); err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "medicamento no encontrado"})
 		return

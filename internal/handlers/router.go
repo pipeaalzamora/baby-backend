@@ -1,19 +1,21 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 	"time"
 
 	"babyapp/backend/internal/config"
 	"babyapp/backend/internal/middleware"
 	"babyapp/backend/internal/repository"
+	"babyapp/backend/internal/storage"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
 // NewRouter builds and returns the configured Gin engine.
-func NewRouter(cfg *config.Config, db *repository.DB) *gin.Engine {
+func NewRouter(cfg *config.Config, db *repository.DB) (*gin.Engine, error) {
 	r := gin.New()
 	r.Use(gin.Logger(), gin.Recovery())
 
@@ -31,33 +33,45 @@ func NewRouter(cfg *config.Config, db *repository.DB) *gin.Engine {
 	// Serve uploaded files
 	r.Static("/uploads", cfg.UploadDir)
 
+	s3Service, err := storage.NewS3Service(
+		context.Background(),
+		cfg.AWSRegion,
+		cfg.S3PhotosBucket,
+		time.Duration(cfg.S3PresignTTL)*time.Second,
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	// Health check — no auth required
 	r.GET("/api/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"ok": true, "ts": time.Now().UTC()})
 	})
 
-	// ─── Auth routes (no JWT required) ────────────────────────────────────
-	authH := NewAuthHandler(db, cfg.JWTSecret, cfg.JWTExpiry)
-	googleH := NewGoogleAuthHandler(db, cfg.JWTSecret, cfg.JWTExpiry, cfg.GoogleClientID)
-	auth := r.Group("/api/auth")
-	{
-		auth.POST("/register", authH.Register)
-		auth.POST("/login", authH.Login)
-		auth.POST("/google", googleH.GoogleLogin)
-	}
+	firebaseAuth := middleware.NewFirebaseVerifier(cfg.FirebaseProjectID)
 
 	// ─── Protected routes ─────────────────────────────────────────────────
-	authMW := middleware.RequireAuth(cfg.JWTSecret)
+	authMW := middleware.RequireFirebaseAuth(db, firebaseAuth)
 	api := r.Group("/api", authMW)
 
+	// Auth session
+	authH := NewAuthHandler(db)
+	api.GET("/auth/me", authH.Me)
+
 	// Child
-	childH := NewChildHandler(db)
+	childH := NewChildHandler(db, s3Service)
 	api.GET("/child", childH.Get)
 	api.POST("/child", childH.Upsert)
+	api.GET("/children", childH.List)
+	api.POST("/children", childH.Create)
+	api.PATCH("/children/:id", childH.Update)
+	api.POST("/children/:id/select", childH.Select)
+	api.POST("/children/:id/photo/presign", childH.PresignPhoto)
 
 	// Vaccines
 	vaccineH := NewVaccineHandler(db)
 	api.GET("/vaccines", vaccineH.List)
+	api.POST("/vaccines/seed-local", vaccineH.SeedLocal)
 	api.POST("/vaccines/bulk", vaccineH.BulkCreate)
 	api.PATCH("/vaccines/:id", vaccineH.MarkAdministered) // PATCH es semánticamente correcto para actualización parcial
 
@@ -71,6 +85,7 @@ func NewRouter(cfg *config.Config, db *repository.DB) *gin.Engine {
 	checkupH := NewCheckupHandler(db)
 	api.GET("/checkups", checkupH.List)
 	api.POST("/checkups", checkupH.Create)
+	api.PATCH("/checkups/:id", checkupH.Patch)
 	api.DELETE("/checkups/:id", checkupH.Delete)
 
 	// Milestones
@@ -78,6 +93,9 @@ func NewRouter(cfg *config.Config, db *repository.DB) *gin.Engine {
 	api.GET("/milestones", milestoneH.List)
 	api.POST("/milestones", milestoneH.Create)
 	api.DELETE("/milestones/:id", milestoneH.Delete)
+
+	developmentH := NewDevelopmentHandler(db)
+	api.GET("/development/advice", developmentH.Advice)
 
 	// Diary
 	diaryH := NewDiaryHandler(db)
@@ -93,16 +111,18 @@ func NewRouter(cfg *config.Config, db *repository.DB) *gin.Engine {
 	api.DELETE("/medications/:id", medH.Delete)
 
 	// Photos
-	photoH := NewPhotoHandler(db, cfg.UploadDir, cfg.BaseURL)
+	photoH := NewPhotoHandler(db, cfg.UploadDir, cfg.BaseURL, s3Service)
 	api.GET("/photos", photoH.List)
+	api.POST("/photos/presign", photoH.Presign)
 	api.POST("/photos", photoH.Upload)
 	api.DELETE("/photos/:id", photoH.Delete)
 
 	// Recipes + food introductions
-	recipeH := NewRecipeHandler(db)
+	recipeH := NewRecipeHandler(db, cfg.TheMealDBAPIKey)
 	api.GET("/recipes", recipeH.List)
 	api.POST("/recipes", recipeH.Create)
 	api.PATCH("/recipes/:id/favorite", recipeH.ToggleFavorite)
+	api.GET("/recipes/search-external", recipeH.SearchExternal)
 	api.GET("/recipes/introductions", recipeH.ListIntroductions)
 	api.POST("/recipes/introductions", recipeH.CreateIntroduction)
 
@@ -119,5 +139,11 @@ func NewRouter(cfg *config.Config, db *repository.DB) *gin.Engine {
 	api.DELETE("/caregivers/:id", cgH.Remove)
 	api.GET("/caregivers/accept/:token", cgH.AcceptInvite)
 
-	return r
+	// Chile public-health sources
+	externalH := NewExternalHandler()
+	api.GET("/external/farmacies", externalH.Pharmacies)
+	api.GET("/external/health-centers", externalH.HealthCenters)
+	api.GET("/external/medicine-registry", externalH.MedicineRegistry)
+
+	return r, nil
 }

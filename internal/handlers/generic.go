@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"net/http"
+	"strings"
 	"time"
 
 	"babyapp/backend/internal/middleware"
@@ -133,6 +134,12 @@ func (h *CheckupHandler) Create(c *gin.Context) {
 	}
 	body.ChildID = childID
 	body.CreatedAt = time.Now()
+	if strings.TrimSpace(body.Status) == "" {
+		body.Status = "completed"
+	}
+	if body.Status == "completed" && strings.TrimSpace(body.CompletedAt) == "" {
+		body.CompletedAt = body.Date
+	}
 	if body.Prescriptions == nil {
 		body.Prescriptions = []models.Prescription{}
 	}
@@ -148,6 +155,72 @@ func (h *CheckupHandler) Create(c *gin.Context) {
 	}
 	body.ID = res.InsertedID.(bson.ObjectID)
 	c.JSON(http.StatusCreated, body)
+}
+
+func (h *CheckupHandler) Patch(c *gin.Context) {
+	childID := resolveChildID(c, h.db, middleware.KeyChildID, middleware.KeyUserID)
+	id, err := bson.ObjectIDFromHex(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "id inválido"})
+		return
+	}
+
+	var body struct {
+		Status       *string `json:"status"`
+		CompletedAt  *string `json:"completedAt"`
+		Observations *string `json:"observations"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	set := bson.M{}
+	unset := bson.M{}
+	if body.Status != nil {
+		status := strings.TrimSpace(*body.Status)
+		if status != "pending" && status != "completed" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "estado inválido"})
+			return
+		}
+		set["status"] = status
+		if status == "completed" {
+			completedAt := time.Now().Format("2006-01-02")
+			if body.CompletedAt != nil && strings.TrimSpace(*body.CompletedAt) != "" {
+				completedAt = strings.TrimSpace(*body.CompletedAt)
+			}
+			set["completedAt"] = completedAt
+		} else {
+			unset["completedAt"] = ""
+		}
+	}
+	if body.Observations != nil {
+		set["observations"] = strings.TrimSpace(*body.Observations)
+	}
+	if len(set) == 0 && len(unset) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "sin cambios"})
+		return
+	}
+
+	update := bson.M{}
+	if len(set) > 0 {
+		update["$set"] = set
+	}
+	if len(unset) > 0 {
+		update["$unset"] = unset
+	}
+
+	col := h.db.Collection(repository.ColCheckups)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
+	var checkup models.Checkup
+	if err := col.FindOneAndUpdate(ctx, bson.M{"_id": id, "childId": childID}, update, opts).Decode(&checkup); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "control no encontrado"})
+		return
+	}
+	c.JSON(http.StatusOK, checkup)
 }
 
 func (h *CheckupHandler) Delete(c *gin.Context) {

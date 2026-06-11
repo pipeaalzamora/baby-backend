@@ -11,30 +11,35 @@ import (
 
 // Child represents the baby's profile.
 type Child struct {
-	ID              bson.ObjectID `bson:"_id,omitempty"       json:"id"`
-	UserID          string        `bson:"userId"              json:"userId"`
-	Name            string        `bson:"name"                json:"name"`
-	BirthDate       string        `bson:"birthDate"           json:"birthDate"`
-	Gender          string        `bson:"gender"              json:"gender"` // "M" | "F"
-	BloodType       string        `bson:"bloodType,omitempty" json:"bloodType,omitempty"`
-	PhotoURL        string        `bson:"photoUrl,omitempty"  json:"photoUrl,omitempty"`
-	BirthWeightKg   float64       `bson:"birthWeightKg"       json:"birthWeightKg"`
-	BirthHeightCm   float64       `bson:"birthHeightCm"       json:"birthHeightCm"`
-	ModelKey        string        `bson:"modelKey,omitempty"  json:"modelKey,omitempty"` // clave del modelo 3D elegido
-	CreatedAt       time.Time     `bson:"createdAt"           json:"createdAt"`
-	UpdatedAt       time.Time     `bson:"updatedAt"           json:"updatedAt"`
+	ID            bson.ObjectID `bson:"_id,omitempty"       json:"id"`
+	UserID        string        `bson:"userId"              json:"userId"`
+	Name          string        `bson:"name"                json:"name"`
+	BirthDate     string        `bson:"birthDate"           json:"birthDate"`
+	Gender        string        `bson:"gender"              json:"gender"` // "M" | "F"
+	BloodType     string        `bson:"bloodType,omitempty" json:"bloodType,omitempty"`
+	PhotoURL      string        `bson:"photoUrl,omitempty"  json:"photoUrl,omitempty"`
+	PhotoProvider string        `bson:"photoProvider,omitempty" json:"photoProvider,omitempty"`
+	PhotoBucket   string        `bson:"photoBucket,omitempty" json:"photoBucket,omitempty"`
+	PhotoKey      string        `bson:"photoKey,omitempty" json:"photoKey,omitempty"`
+	PhotoMimeType string        `bson:"photoMimeType,omitempty" json:"photoMimeType,omitempty"`
+	PhotoSize     int64         `bson:"photoSize,omitempty" json:"photoSize,omitempty"`
+	BirthWeightKg float64       `bson:"birthWeightKg"       json:"birthWeightKg"`
+	BirthHeightCm float64       `bson:"birthHeightCm"       json:"birthHeightCm"`
+	CreatedAt     time.Time     `bson:"createdAt"           json:"createdAt"`
+	UpdatedAt     time.Time     `bson:"updatedAt"           json:"updatedAt"`
 }
 
 // ─── User ─────────────────────────────────────────────────────────────────────
 
 // User represents an authenticated parent/caregiver account.
 type User struct {
-	ID           bson.ObjectID `bson:"_id,omitempty" json:"id"`
-	Email        string        `bson:"email"         json:"email"`
-	PasswordHash string        `bson:"passwordHash"  json:"-"`
-	Name         string        `bson:"name"          json:"name"`
-	ChildID      string        `bson:"childId,omitempty" json:"childId,omitempty"`
-	CreatedAt    time.Time     `bson:"createdAt"     json:"createdAt"`
+	ID          bson.ObjectID `bson:"_id,omitempty"          json:"id"`
+	FirebaseUID string        `bson:"firebaseUid,omitempty"  json:"-"`
+	Email       string        `bson:"email"                  json:"email"`
+	Name        string        `bson:"name"                   json:"name"`
+	Picture     string        `bson:"picture,omitempty"      json:"picture,omitempty"`
+	ChildID     string        `bson:"childId,omitempty"      json:"childId,omitempty"`
+	CreatedAt   time.Time     `bson:"createdAt"              json:"createdAt"`
 }
 
 // ─── Vaccine ──────────────────────────────────────────────────────────────────
@@ -56,6 +61,8 @@ type Vaccine struct {
 	Name             string        `bson:"name"                   json:"name"`
 	AgeLabel         string        `bson:"ageLabel"               json:"ageLabel"`
 	ScheduledDate    string        `bson:"scheduledDate"          json:"scheduledDate"`
+	Source           string        `bson:"source,omitempty"       json:"source,omitempty"`
+	ScheduleVersion  string        `bson:"scheduleVersion,omitempty" json:"scheduleVersion,omitempty"`
 	AdministeredDate string        `bson:"administeredDate,omitempty" json:"administeredDate,omitempty"`
 	Status           VaccineStatus `bson:"status"                 json:"status"`
 	Location         string        `bson:"location,omitempty"     json:"location,omitempty"`
@@ -69,15 +76,15 @@ type Vaccine struct {
 
 // Measurement records a growth measurement at a point in time.
 type Measurement struct {
-	ID                   bson.ObjectID `bson:"_id,omitempty"              json:"id"`
-	ChildID              string        `bson:"childId"                    json:"childId"`
-	Date                 string        `bson:"date"                       json:"date"`
-	WeightKg             float64       `bson:"weightKg"                   json:"weightKg"`
-	HeightCm             float64       `bson:"heightCm"                   json:"heightCm"`
-	HeadCircumferenceCm  float64       `bson:"headCircumferenceCm"        json:"headCircumferenceCm"`
-	PercentileWeight     *float64      `bson:"percentileWeight,omitempty" json:"percentileWeight,omitempty"`
-	PercentileHeight     *float64      `bson:"percentileHeight,omitempty" json:"percentileHeight,omitempty"`
-	CreatedAt            time.Time     `bson:"createdAt"                  json:"createdAt"`
+	ID                  bson.ObjectID `bson:"_id,omitempty"              json:"id"`
+	ChildID             string        `bson:"childId"                    json:"childId"`
+	Date                string        `bson:"date"                       json:"date"`
+	WeightKg            float64       `bson:"weightKg"                   json:"weightKg"`
+	HeightCm            float64       `bson:"heightCm"                   json:"heightCm"`
+	HeadCircumferenceCm float64       `bson:"headCircumferenceCm"        json:"headCircumferenceCm"`
+	PercentileWeight    *float64      `bson:"percentileWeight,omitempty" json:"percentileWeight,omitempty"`
+	PercentileHeight    *float64      `bson:"percentileHeight,omitempty" json:"percentileHeight,omitempty"`
+	CreatedAt           time.Time     `bson:"createdAt"                  json:"createdAt"`
 }
 
 // ─── Checkup ──────────────────────────────────────────────────────────────────
@@ -99,6 +106,9 @@ type Checkup struct {
 	Observations    string         `bson:"observations"               json:"observations"`
 	Prescriptions   []Prescription `bson:"prescriptions"              json:"prescriptions"`
 	NextAppointment string         `bson:"nextAppointment,omitempty"  json:"nextAppointment,omitempty"`
+	Status          string         `bson:"status,omitempty"           json:"status,omitempty"`
+	CompletedAt     string         `bson:"completedAt,omitempty"      json:"completedAt,omitempty"`
+	SuggestedKey    string         `bson:"suggestedKey,omitempty"     json:"suggestedKey,omitempty"`
 	CreatedAt       time.Time      `bson:"createdAt"                  json:"createdAt"`
 }
 
@@ -108,11 +118,11 @@ type Checkup struct {
 type MilestoneCategory string
 
 const (
-	MilestoneMotor    MilestoneCategory = "motor"
-	MilestoneSocial   MilestoneCategory = "social"
-	MilestoneLanguage MilestoneCategory = "language"
+	MilestoneMotor     MilestoneCategory = "motor"
+	MilestoneSocial    MilestoneCategory = "social"
+	MilestoneLanguage  MilestoneCategory = "language"
 	MilestoneCognitive MilestoneCategory = "cognitive"
-	MilestoneFeeding  MilestoneCategory = "feeding"
+	MilestoneFeeding   MilestoneCategory = "feeding"
 )
 
 // Milestone records a developmental achievement.
@@ -155,30 +165,41 @@ type DiaryEntry struct {
 
 // Medication represents a prescribed treatment.
 type Medication struct {
-	ID             bson.ObjectID `bson:"_id,omitempty"          json:"id"`
-	ChildID        string        `bson:"childId"                json:"childId"`
-	Name           string        `bson:"name"                   json:"name"`
-	Dosage         string        `bson:"dosage"                 json:"dosage"`
-	FrequencyHours int           `bson:"frequencyHours"         json:"frequencyHours"`
-	StartDate      string        `bson:"startDate"              json:"startDate"`
-	EndDate        string        `bson:"endDate,omitempty"      json:"endDate,omitempty"`
-	Active         bool          `bson:"active"                 json:"active"`
-	PrescribedBy   string        `bson:"prescribedBy"           json:"prescribedBy"`
-	Reason         string        `bson:"reason"                 json:"reason"`
-	CreatedAt      time.Time     `bson:"createdAt"              json:"createdAt"`
+	ID                   bson.ObjectID `bson:"_id,omitempty"          json:"id"`
+	ChildID              string        `bson:"childId"                json:"childId"`
+	Name                 string        `bson:"name"                   json:"name"`
+	Dosage               string        `bson:"dosage"                 json:"dosage"`
+	FrequencyHours       int           `bson:"frequencyHours"         json:"frequencyHours"`
+	StartDate            string        `bson:"startDate"              json:"startDate"`
+	EndDate              string        `bson:"endDate,omitempty"      json:"endDate,omitempty"`
+	Active               bool          `bson:"active"                 json:"active"`
+	PrescribedBy         string        `bson:"prescribedBy"           json:"prescribedBy"`
+	Reason               string        `bson:"reason"                 json:"reason"`
+	PurchasePharmacy     string        `bson:"purchasePharmacy,omitempty" json:"purchasePharmacy,omitempty"`
+	PurchaseAddress      string        `bson:"purchaseAddress,omitempty" json:"purchaseAddress,omitempty"`
+	PurchaseCommune      string        `bson:"purchaseCommune,omitempty" json:"purchaseCommune,omitempty"`
+	MedicineRegistration string        `bson:"medicineRegistration,omitempty" json:"medicineRegistration,omitempty"`
+	MedicineHolder       string        `bson:"medicineHolder,omitempty" json:"medicineHolder,omitempty"`
+	SaleCondition        string        `bson:"saleCondition,omitempty" json:"saleCondition,omitempty"`
+	CreatedAt            time.Time     `bson:"createdAt"              json:"createdAt"`
 }
 
 // ─── Photo ────────────────────────────────────────────────────────────────────
 
 // Photo stores metadata for an uploaded image.
 type Photo struct {
-	ID        bson.ObjectID `bson:"_id,omitempty"       json:"id"`
-	ChildID   string        `bson:"childId"             json:"childId"`
-	URL       string        `bson:"url"                 json:"url"`
-	Date      string        `bson:"date"                json:"date"`
-	Tags      []string      `bson:"tags"                json:"tags"`
-	Caption   string        `bson:"caption,omitempty"   json:"caption,omitempty"`
-	CreatedAt time.Time     `bson:"createdAt"           json:"createdAt"`
+	ID              bson.ObjectID `bson:"_id,omitempty"       json:"id"`
+	ChildID         string        `bson:"childId"             json:"childId"`
+	URL             string        `bson:"url,omitempty"       json:"url"`
+	StorageProvider string        `bson:"storageProvider,omitempty" json:"storageProvider,omitempty"`
+	Bucket          string        `bson:"bucket,omitempty"    json:"bucket,omitempty"`
+	Key             string        `bson:"key,omitempty"       json:"key,omitempty"`
+	ContentType     string        `bson:"contentType,omitempty" json:"contentType,omitempty"`
+	SizeBytes       int64         `bson:"sizeBytes,omitempty" json:"sizeBytes,omitempty"`
+	Date            string        `bson:"date"                json:"date"`
+	Tags            []string      `bson:"tags"                json:"tags"`
+	Caption         string        `bson:"caption,omitempty"   json:"caption,omitempty"`
+	CreatedAt       time.Time     `bson:"createdAt"           json:"createdAt"`
 }
 
 // ─── Recipe ───────────────────────────────────────────────────────────────────

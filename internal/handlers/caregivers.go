@@ -24,7 +24,7 @@ func NewCaregiverHandler(db *repository.DB) *CaregiverHandler {
 
 // List godoc — GET /api/caregivers
 func (h *CaregiverHandler) List(c *gin.Context) {
-	childID := c.GetString(middleware.KeyChildID)
+	childID := resolveChildID(c, h.db, middleware.KeyChildID, middleware.KeyUserID)
 	col := h.db.Collection(repository.ColCaregivers)
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
@@ -50,11 +50,15 @@ func (h *CaregiverHandler) List(c *gin.Context) {
 
 // Invite godoc — POST /api/caregivers
 func (h *CaregiverHandler) Invite(c *gin.Context) {
-	childID := c.GetString(middleware.KeyChildID)
+	childID := resolveChildID(c, h.db, middleware.KeyChildID, middleware.KeyUserID)
+	if childID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "perfil de bebé requerido"})
+		return
+	}
 
 	var body struct {
-		Email string              `json:"email" binding:"required,email"`
-		Name  string              `json:"name"`
+		Email string               `json:"email" binding:"required,email"`
+		Name  string               `json:"name"`
 		Role  models.CaregiverRole `json:"role"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
@@ -99,6 +103,7 @@ func (h *CaregiverHandler) Invite(c *gin.Context) {
 
 // Remove godoc — DELETE /api/caregivers/:id
 func (h *CaregiverHandler) Remove(c *gin.Context) {
+	childID := resolveChildID(c, h.db, middleware.KeyChildID, middleware.KeyUserID)
 	id, err := bson.ObjectIDFromHex(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "id inválido"})
@@ -109,8 +114,13 @@ func (h *CaregiverHandler) Remove(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
-	if _, err := col.DeleteOne(ctx, bson.M{"_id": id}); err != nil {
+	res, err := col.DeleteOne(ctx, bson.M{"_id": id, "childId": childID})
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if res.DeletedCount == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "cuidador no encontrado"})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})

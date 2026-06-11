@@ -5,6 +5,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"syscall"
@@ -25,7 +26,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("❌ MongoDB: %v", err)
 	}
-	log.Printf("✅ MongoDB conectado: %s / %s", cfg.MongoURI, cfg.DBName)
+	log.Printf("✅ MongoDB conectado: %s / %s", redactMongoURI(cfg.MongoURI), cfg.DBName)
 
 	// Ensure all indexes exist (idempotent)
 	idxCtx, idxCancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -33,7 +34,10 @@ func main() {
 	idxCancel()
 
 	// Build router
-	router := handlers.NewRouter(cfg, db)
+	router, err := handlers.NewRouter(cfg, db)
+	if err != nil {
+		log.Fatalf("❌ Router: %v", err)
+	}
 
 	srv := &http.Server{
 		Addr:         ":" + cfg.Port,
@@ -67,4 +71,13 @@ func main() {
 		log.Printf("mongo disconnect: %v", err)
 	}
 	log.Println("✅ Servidor apagado correctamente")
+}
+
+func redactMongoURI(raw string) string {
+	parsed, err := url.Parse(raw)
+	if err != nil || parsed.User == nil {
+		return raw
+	}
+	parsed.User = nil
+	return parsed.String()
 }

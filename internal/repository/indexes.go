@@ -17,26 +17,31 @@ func (d *DB) EnsureIndexes(ctx context.Context) {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
+	// Versiones anteriores permitían solo un hijo por usuario con este índice único.
+	// Se elimina en forma idempotente para habilitar múltiples perfiles infantiles.
+	if err := d.db.Collection(ColChildren).Indexes().DropOne(ctx, "userId_unique"); err == nil {
+		log.Printf("✅ índice legado %q eliminado en colección %q", "userId_unique", ColChildren)
+	}
+
 	type indexSpec struct {
 		collection string
 		model      mongo.IndexModel
 	}
 
 	specs := []indexSpec{
-		// users — email único para evitar duplicados
 		{
 			ColUsers,
 			mongo.IndexModel{
-				Keys:    bson.D{{Key: "email", Value: 1}},
-				Options: options.Index().SetUnique(true).SetName("email_unique"),
+				Keys:    bson.D{{Key: "firebaseUid", Value: 1}},
+				Options: options.Index().SetUnique(true).SetSparse(true).SetName("firebaseUid_unique"),
 			},
 		},
-		// children — un hijo por usuario
+		// children — listar perfiles infantiles por usuario
 		{
 			ColChildren,
 			mongo.IndexModel{
-				Keys:    bson.D{{Key: "userId", Value: 1}},
-				Options: options.Index().SetUnique(true).SetName("userId_unique"),
+				Keys:    bson.D{{Key: "userId", Value: 1}, {Key: "createdAt", Value: 1}},
+				Options: options.Index().SetName("userId_createdAt"),
 			},
 		},
 		// vaccines — listar por hijo ordenado por fecha programada
@@ -45,6 +50,25 @@ func (d *DB) EnsureIndexes(ctx context.Context) {
 			mongo.IndexModel{
 				Keys:    bson.D{{Key: "childId", Value: 1}, {Key: "scheduledDate", Value: 1}},
 				Options: options.Index().SetName("childId_scheduledDate"),
+			},
+		},
+		// vaccines — impedir duplicados del mismo evento PNI por hijo
+		{
+			ColVaccines,
+			mongo.IndexModel{
+				Keys: bson.D{
+					{Key: "childId", Value: 1},
+					{Key: "code", Value: 1},
+					{Key: "scheduledDate", Value: 1},
+				},
+				Options: options.Index().
+					SetName("childId_code_scheduledDate_unique").
+					SetUnique(true).
+					SetPartialFilterExpression(bson.M{
+						"childId":       bson.M{"$type": "string", "$gt": ""},
+						"code":          bson.M{"$type": "string", "$gt": ""},
+						"scheduledDate": bson.M{"$type": "string", "$gt": ""},
+					}),
 			},
 		},
 		// measurements — listar por hijo ordenado por fecha
@@ -131,7 +155,7 @@ func (d *DB) EnsureIndexes(ctx context.Context) {
 			ColCaregivers,
 			mongo.IndexModel{
 				Keys:    bson.D{{Key: "inviteToken", Value: 1}},
-				Options: options.Index().SetSparse(true).SetName("inviteToken_sparse"),
+				Options: options.Index().SetSparse(true).SetName("inviteToken_lookup"),
 			},
 		},
 		{

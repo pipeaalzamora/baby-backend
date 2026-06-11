@@ -36,9 +36,9 @@ func coalesce(vals ...string) string {
 }
 
 // resolveChildID devuelve el childID del contexto Gin.
-// Si está vacío (token recién creado sin child aún), lo busca en la colección
-// children por userId. Esto ocurre cuando el usuario acaba de registrarse y
-// aún no tiene childId en el JWT.
+// Si está vacío, lo busca en la colección children por userId. Esto ocurre
+// cuando el usuario de Firebase ya existe pero todavía no tiene el childId
+// sincronizado en su documento local.
 func resolveChildID(c *gin.Context, db *repository.DB, childIDKey, userIDKey string) string {
 	childID := c.GetString(childIDKey)
 	if childID != "" {
@@ -58,6 +58,13 @@ func resolveChildID(c *gin.Context, db *repository.DB, childIDKey, userIDKey str
 		ID bson.ObjectID `bson:"_id"`
 	}
 	if err := col.FindOne(ctx, bson.M{"userId": userID}).Decode(&child); err == nil {
+		if userObjID, idErr := bson.ObjectIDFromHex(userID); idErr == nil {
+			_, _ = db.Collection(repository.ColUsers).UpdateOne(
+				ctx,
+				bson.M{"_id": userObjID},
+				bson.M{"$set": bson.M{"childId": child.ID.Hex()}},
+			)
+		}
 		return child.ID.Hex()
 	}
 	return ""
