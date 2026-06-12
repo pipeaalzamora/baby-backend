@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -15,6 +16,7 @@ type Config struct {
 	DBName            string
 	Port              string
 	FrontendURL       string
+	FrontendURLs      []string
 	BaseURL           string
 	UploadDir         string
 	FirebaseProjectID string
@@ -40,6 +42,7 @@ func Load() *Config {
 		DBName:            getEnv("DB_NAME", "babyapp"),
 		Port:              getEnv("PORT", "3001"),
 		FrontendURL:       getEnv("FRONTEND_URL", "http://localhost:4200"),
+		FrontendURLs:      getEnvList("FRONTEND_URLS", getEnv("FRONTEND_URL", "http://localhost:4200")),
 		BaseURL:           getEnv("BASE_URL", "http://localhost:3001"),
 		UploadDir:         getEnv("UPLOAD_DIR", "./uploads"),
 		FirebaseProjectID: firebaseProjectID,
@@ -65,4 +68,18 @@ func getEnvInt(key string, fallback int) int {
 		}
 	}
 	return fallback
+}
+
+func getEnvList(key, fallback string) []string {
+	raw := getEnv(key, fallback)
+	parts := strings.Split(raw, ",")
+	values := make([]string, 0, len(parts))
+	for _, part := range parts {
+		value := strings.TrimSpace(part)
+		value = strings.TrimRight(value, "/")
+		if value != "" {
+			values = append(values, value)
+		}
+	}
+	return values
 }

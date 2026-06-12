@@ -3,6 +3,8 @@ package handlers
 import (
 	"context"
 	"net/http"
+	"slices"
+	"strings"
 	"time"
 
 	"babyapp/backend/internal/config"
@@ -19,8 +21,8 @@ func NewRouter(cfg *config.Config, db *repository.DB) (*gin.Engine, error) {
 	r := gin.New()
 	r.Use(gin.Logger(), gin.Recovery())
 
-	// CORS — en desarrollo permite localhost:4200, en producción usa FRONTEND_URL.
-	allowedOrigins := []string{cfg.FrontendURL}
+	// CORS: los origins deben coincidir exactamente con el browser Origin.
+	allowedOrigins := corsAllowedOrigins(cfg)
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     allowedOrigins,
 		AllowMethods:     []string{"GET", "POST", "PATCH", "DELETE", "OPTIONS"},
@@ -146,4 +148,26 @@ func NewRouter(cfg *config.Config, db *repository.DB) (*gin.Engine, error) {
 	api.GET("/external/medicine-registry", externalH.MedicineRegistry)
 
 	return r, nil
+}
+
+func corsAllowedOrigins(cfg *config.Config) []string {
+	origins := []string{
+		"http://localhost:4200",
+		"http://127.0.0.1:4200",
+	}
+	for _, origin := range cfg.FrontendURLs {
+		addOrigin(&origins, origin)
+	}
+	addOrigin(&origins, cfg.FrontendURL)
+	return origins
+}
+
+func addOrigin(origins *[]string, origin string) {
+	for _, part := range strings.Split(origin, ",") {
+		value := strings.TrimRight(strings.TrimSpace(part), "/")
+		if value == "" || slices.Contains(*origins, value) {
+			continue
+		}
+		*origins = append(*origins, value)
+	}
 }
