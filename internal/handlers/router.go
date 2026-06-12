@@ -57,8 +57,9 @@ func NewRouter(cfg *config.Config, db *repository.DB) (*gin.Engine, error) {
 	api := r.Group("/api", authMW)
 
 	// Auth session
-	authH := NewAuthHandler(db)
+	authH := NewAuthHandler(db, s3Service)
 	api.GET("/auth/me", authH.Me)
+	api.DELETE("/auth/account", authH.DeleteAccount)
 
 	// Child
 	childH := NewChildHandler(db, s3Service)

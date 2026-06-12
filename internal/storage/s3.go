@@ -4,11 +4,13 @@ package storage
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
 
 // S3Service wraps the S3 client and presigner used by media handlers.
@@ -107,4 +109,52 @@ func (s *S3Service) Delete(ctx context.Context, bucket, key string) error {
 		Key:    aws.String(key),
 	})
 	return err
+}
+
+// DeletePrefix removes every object below a private account prefix.
+func (s *S3Service) DeletePrefix(ctx context.Context, prefix string) error {
+	if !s.Enabled() {
+		return nil
+	}
+	prefix = strings.TrimSpace(prefix)
+	if prefix == "" {
+		return nil
+	}
+
+	paginator := s3.NewListObjectsV2Paginator(s.client, &s3.ListObjectsV2Input{
+		Bucket: aws.String(s.bucket),
+		Prefix: aws.String(prefix),
+	})
+	for paginator.HasMorePages() {
+		page, err := paginator.NextPage(ctx)
+		if err != nil {
+			return err
+		}
+		if len(page.Contents) == 0 {
+			continue
+		}
+
+		objects := make([]types.ObjectIdentifier, 0, len(page.Contents))
+		for _, object := range page.Contents {
+			if object.Key == nil || *object.Key == "" {
+				continue
+			}
+			objects = append(objects, types.ObjectIdentifier{Key: object.Key})
+		}
+		if len(objects) == 0 {
+			continue
+		}
+
+		_, err = s.client.DeleteObjects(ctx, &s3.DeleteObjectsInput{
+			Bucket: aws.String(s.bucket),
+			Delete: &types.Delete{
+				Objects: objects,
+				Quiet:   aws.Bool(true),
+			},
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
